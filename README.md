@@ -59,7 +59,6 @@ API para la gestión de clientes bancarios, desarrollada con FastAPI y SQLAlchem
     ```env
     DATABASE_URL="mysql+aiomysql://<user>:<password>@<host>:<port>/<database>"
     SECRET_KEY="<tu-clave-secreta-muy-segura>"
-    ALGORITHM="HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES=30
     ```
     **Importante:** La `SECRET_KEY` debe ser una cadena de texto larga y aleatoria.
@@ -74,7 +73,46 @@ uvicorn app.main:app --reload
 
 La API estará disponible en `http://127.0.0.1:8000`.
 
-## Uso con Docker
+## Administración y Migraciones
+
+### Creación de Usuario Administrador (CLI)
+
+Para facilitar la configuración inicial, la aplicación incluye un script de línea de comandos (CLI) para crear un usuario administrador de forma segura e interactiva.
+
+1.  Asegúrate de que tu entorno virtual esté activado.
+
+2.  Ejecuta el siguiente comando:
+    ```bash
+    python app/cli.py
+    ```
+
+3.  El script te pedirá de forma interactiva el **nombre de usuario**, **email** y **contraseña** para el nuevo administrador. La contraseña no se mostrará mientras la escribes y se te pedirá que la confirmes.
+
+### Manejo de Migraciones (Alembic)
+
+Este proyecto utiliza Alembic para gestionar las migraciones de la base de datos. Los comandos principales son:
+
+*   **Generar una nueva migración:**
+    Después de hacer cambios en los modelos de `app/models/`, ejecuta:
+    ```bash
+    alembic revision --autogenerate -m "Descripción de los cambios"
+    ```
+
+*   **Aplicar migraciones:**
+    Para aplicar todas las migraciones pendientes a la base de datos:
+    ```bash
+    alembic upgrade head
+    ```
+
+*   **Revertir una migración:**
+    Para revertir la última migración aplicada:
+    ```bash
+    alembic downgrade -1
+    ```
+
+## Uso Opcional con Docker
+
+Como alternativa a la ejecución local, puedes desplegar la aplicación en un contenedor Docker.
 
 1.  **Construir la imagen de Docker:**
     ```bash
@@ -94,15 +132,33 @@ La API estará disponible en `http://127.0.0.1:8000`.
 ## Estructura del Proyecto
 
 ```
+.
+├── alembic/              # Scripts de migración de Alembic
+│   └── versions/
 ├── app/
-│   ├── api/          # Routers y endpoints de la API
-│   ├── core/         # Lógica de negocio y configuración
-│   ├── crud/         # Operaciones de acceso a datos (CRUD)
-│   ├── db/           # Configuración de la base de datos
-│   ├── models/       # Modelos de SQLAlchemy
-│   └── schemas/      # Esquemas de Pydantic
+│   ├── api/              # Routers y endpoints de la API
+│   │   ├── auth.py
+│   │   └── clientes.py
+│   ├── core/             # Lógica de negocio y configuración
+│   │   ├── auth.py
+│   │   ├── config.py
+│   │   └── dependencies.py
+│   ├── crud/             # Operaciones de acceso a datos (CRUD)
+│   │   └── cliente.py
+│   ├── db/               # Configuración de la base de datos
+│   │   └── database.py
+│   ├── models/           # Modelos de SQLAlchemy
+│   │   ├── cliente.py
+│   │   └── user.py
+│   ├── schemas/          # Esquemas de Pydantic
+│   │   ├── cliente.py
+│   │   └── user.py
+│   ├── cli.py            # Script para tareas de administración por CLI
+│   └── main.py           # Punto de entrada de la aplicación FastAPI
 ├── .dockerignore
+├── .env.example
 ├── .gitignore
+├── alembic.ini           # Configuración de Alembic
 ├── Dockerfile
 ├── README.md
 └── requirements.txt
@@ -113,7 +169,7 @@ La API estará disponible en `http://127.0.0.1:8000`.
 Una vez que la aplicación esté en ejecución, puedes acceder a la documentación interactiva de la API en:
 
 *   **Swagger UI:** `http://127.0.0.1:8000/docs`
-*   **ReDoc:** `http://127.0.0.1:8000/redoc`
+*   **ReDoc:** `http://127.0.0.1:8000/redoc`  
 
 ### Autenticación
 

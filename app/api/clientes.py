@@ -9,7 +9,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 from app.db.database import get_db
-from app.core.dependencies import get_current_user
+from app.core.dependencies import get_current_user, get_admin_user
 from app.crud.cliente import cliente_crud
 from app.schemas.cliente import Cliente, ClienteCreate, ClienteUpdate, ClienteList
 from app.schemas.user import User
@@ -68,7 +68,7 @@ async def crear_cliente(
         logger.error(f"Error inesperado al crear cliente: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error interno del servidor: {str(e)}"
+            detail="Ocurrió un error interno inesperado."
         )
 
 
@@ -132,9 +132,10 @@ async def actualizar_cliente(
             detail=str(e)
         )
     except Exception as e:
+        logger.error(f"Error inesperado al listar clientes: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error interno del servidor"
+            detail="Ocurrió un error interno inesperado."
         )
 
 @router.get("/", response_model=ClienteList)
@@ -169,16 +170,17 @@ async def listar_clientes(
         )
     
     except Exception as e:
+        logger.error(f"Error inesperado al listar clientes: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error interno del servidor"
+            detail="Ocurrió un error interno inesperado."
         )
 
 @router.delete("/{cliente_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def eliminar_cliente(
     cliente_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_admin_user)
 ):
     """Eliminar un cliente"""
     try:
@@ -191,11 +193,16 @@ async def eliminar_cliente(
             )
         
         return None
-    
+
+    except HTTPException:
+        # Re-lanza la excepción HTTP (el 404) para que FastAPI la maneje.
+        raise
+        
     except Exception as e:
+        logger.error(f"Error inesperado al eliminar cliente: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error interno del servidor"
+            detail="Ocurrió un error interno inesperado."
         )
 
 # Endpoints adicionales útiles
