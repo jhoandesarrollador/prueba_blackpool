@@ -68,7 +68,7 @@ API para la gestión de clientes bancarios, desarrollada con FastAPI y SQLAlchem
 Para iniciar la aplicación localmente, ejecuta el siguiente comando desde la raíz del proyecto:
 
 ```bash
-uvicorn app.main:app --reload
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 La API estará disponible en `http://127.0.0.1:8000`.
