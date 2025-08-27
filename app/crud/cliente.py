@@ -1,7 +1,11 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_
+from sqlalchemy import select, and_, func
 from sqlalchemy.exc import IntegrityError
 from typing import Optional, List
+import logging
+
+logger = logging.getLogger(__name__)
+
 from app.models.cliente import Cliente
 from app.schemas.cliente import ClienteCreate, ClienteUpdate
 
@@ -9,15 +13,35 @@ class ClienteCRUD:
     
     async def create(self, db: AsyncSession, cliente_data: ClienteCreate) -> Cliente:
         """Crear un nuevo cliente"""
-        cliente = Cliente(**cliente_data.model_dump())
-        db.add(cliente)
         try:
+            logger.info("Iniciando creación en CRUD")
+            
+            # Crear instancia del modelo
+            cliente_dict = cliente_data.model_dump()
+            logger.info(f"Datos del cliente: {cliente_dict}")
+            
+            cliente = Cliente(**cliente_dict)
+            logger.info("Instancia de Cliente creada")
+            
+            db.add(cliente)
+            logger.info("Cliente agregado a sesión")
+            
             await db.commit()
+            logger.info("Commit exitoso")
+            
             await db.refresh(cliente)
+            logger.info(f"Cliente refrescado, ID: {cliente.id}")
+            
             return cliente
-        except IntegrityError:
+            
+        except IntegrityError as e:
+            logger.error(f"IntegrityError: {str(e)}")
             await db.rollback()
             raise ValueError("Cliente con datos únicos ya existe (email, cuenta o identificación)")
+        except Exception as e:
+            logger.error(f"Error inesperado en create: {str(e)}", exc_info=True)
+            await db.rollback()
+            raise
     
     async def get_by_id(self, db: AsyncSession, cliente_id: int) -> Optional[Cliente]:
         """Obtener cliente por ID"""
@@ -44,7 +68,6 @@ class ClienteCRUD:
     ) -> tuple[List[Cliente], int]:
         """Obtener todos los clientes con paginación y filtros"""
         query = select(Cliente)
-        count_query = select(Cliente)
         
         # Aplicar filtros
         filters = []
@@ -55,18 +78,21 @@ class ClienteCRUD:
         
         if filters:
             query = query.where(and_(*filters))
+        
+        # Contar total primero - CORREGIDO
+        count_query = select(func.count(Cliente.id))
+        if filters:
             count_query = count_query.where(and_(*filters))
         
-        # Contar total
         total_result = await db.execute(count_query)
-        total = len(total_result.fetchall())
+        total = total_result.scalar()
         
         # Obtener resultados con paginación
         query = query.offset(skip).limit(limit)
         result = await db.execute(query)
         clientes = result.scalars().all()
         
-        return clientes, total
+        return list(clientes), total
     
     async def update(
         self, 

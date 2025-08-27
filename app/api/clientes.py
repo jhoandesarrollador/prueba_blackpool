@@ -2,6 +2,11 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional, List
 import math
+import logging
+
+# Configurar logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 from app.db.database import get_db
 from app.core.dependencies import get_current_user
@@ -20,34 +25,52 @@ async def crear_cliente(
 ):
     """Crear un nuevo cliente"""
     try:
+        logger.info(f"Iniciando creación de cliente con email: {cliente_data.correo_electronico}")
+        
         # Verificar si ya existe cliente con mismo email o número de cuenta
         existing_email = await cliente_crud.get_by_email(db, cliente_data.correo_electronico)
         if existing_email:
+            logger.warning(f"Email ya existe: {cliente_data.correo_electronico}")
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Ya existe un cliente con este correo electrónico"
             )
         
+        logger.info("Email verificado, no existe duplicado")
+        
         existing_account = await cliente_crud.get_by_numero_cuenta(db, cliente_data.numero_cuenta)
         if existing_account:
+            logger.warning(f"Número de cuenta ya existe: {cliente_data.numero_cuenta}")
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Ya existe un cliente con este número de cuenta"
             )
         
+        logger.info("Número de cuenta verificado, no existe duplicado")
+        
+        # Intentar crear el cliente
+        logger.info("Creando cliente...")
         cliente = await cliente_crud.create(db, cliente_data)
+        logger.info(f"Cliente creado exitosamente con ID: {cliente.id}")
+        
         return cliente
     
+    except HTTPException:
+        # Re-raise HTTP exceptions (validaciones de negocio)
+        raise
     except ValueError as e:
+        logger.error(f"ValueError al crear cliente: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
     except Exception as e:
+        logger.error(f"Error inesperado al crear cliente: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error interno del servidor"
+            detail=f"Error interno del servidor: {str(e)}"
         )
+
 
 @router.get("/{cliente_id}", response_model=Cliente)
 async def obtener_cliente(
